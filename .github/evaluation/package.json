@@ -1,0 +1,20 @@
+{
+  "name": "kadea-projet-module-6-evaluation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Évaluation automatique et déterministe du projet de fin de module 6 (application web vanilla + localStorage)",
+  "main": "evaluate.js",
+  "scripts": {
+    "evaluate": "node evaluate.js ../.."
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "acorn": "8.19.0",
+    "acorn-walk": "8.3.5",
+    "html-validate": "11.17.0",
+    "lighthouse": "13.5.0",
+    "playwright": "1.64.1"
+  }
+}

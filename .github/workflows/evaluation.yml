@@ -1,0 +1,84 @@
+name: Évaluation automatique
+
+on:
+  push:
+    branches: [develop]
+    paths-ignore:
+      - evaluation.md
+      - evaluation/**
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: evaluation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evaluation:
+    name: Évaluer le projet de fin de module 6
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Récupérer le dépôt (historique complet pour compter les commits)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: .github/evaluation/package-lock.json
+
+      - name: Installer l'évaluateur
+        run: npm ci --prefix .github/evaluation --no-audit --no-fund
+
+      - name: Mettre en cache Chromium
+        id: cache-chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: chromium-${{ runner.os }}-${{ hashFiles('.github/evaluation/package-lock.json') }}
+
+      - name: Installer Chromium
+        if: steps.cache-chromium.outputs.cache-hit != 'true'
+        working-directory: .github/evaluation
+        run: npx playwright install --with-deps --no-shell chromium
+
+      - name: Installer les dépendances système de Chromium
+        if: steps.cache-chromium.outputs.cache-hit == 'true'
+        working-directory: .github/evaluation
+        run: npx playwright install-deps chromium
+
+      - name: Évaluer le projet
+        run: node .github/evaluation/evaluate.js . evaluation.md
+
+      - name: Afficher le résultat dans le résumé du job
+        run: cat evaluation.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publier evaluation.md et les captures sur develop
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add evaluation.md
+          if [ -d evaluation ]; then git add evaluation/; fi
+          if git diff --cached --quiet; then
+            echo "evaluation.md inchangé"
+            exit 0
+          fi
+          git commit -m "chore: évaluation automatique [skip ci]"
+          git pull --rebase -X theirs origin develop
+          git push origin HEAD:develop
+
+      - name: Conserver le rapport et les captures comme artefact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation
+          path: |
+            evaluation.md
+            evaluation/
+          if-no-files-found: ignore
