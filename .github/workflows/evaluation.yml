@@ -3,9 +3,6 @@ name: Évaluation automatique
 on:
   push:
     branches: [develop]
-    paths-ignore:
-      - evaluation.md
-      - evaluation/**
   workflow_dispatch:
 
 permissions:
